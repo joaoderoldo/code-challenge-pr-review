@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #0d1117;
+  --color-canvas-subtle: #161b22;
+  --color-canvas-inset: #010409;
+  --color-border-default: #30363d;
+  --color-border-muted: #21262d;
+  --color-fg-default: #e6edf3;
+  --color-fg-muted: #8b949e;
+  --color-fg-subtle: #6e7681;
+  --color-accent: #58a6ff;
+  --color-accent-emphasis: #1f6feb;
+  --color-success: #3fb950;
+  --color-success-emphasis: #238636;
+  --color-danger: #f85149;
+  --color-add-bg: rgba(46, 160, 67, 0.15);
+  --color-add-line-bg: rgba(46, 160, 67, 0.3);
+  --color-del-bg: rgba(248, 81, 73, 0.15);
+  --color-del-line-bg: rgba(248, 81, 73, 0.3);
+  --color-hunk-bg: rgba(56, 139, 253, 0.1);
+  --color-comment-bg: #0d1117;
+}
+
+html,
+body {
+  background: var(--color-canvas);
+  color: var(--color-fg-default);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    "Noto Sans",
+    Helvetica,
+    Arial,
+    sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+code,
+pre,
+.mono,
+.diff-line {
+  font-family:
+    "SF Mono",
+    SFMono-Regular,
+    Consolas,
+    "Liberation Mono",
+    Menlo,
+    monospace;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
