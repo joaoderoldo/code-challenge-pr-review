@@ -81,3 +81,7 @@ src/
 │   └── pr-data.ts                   # the fake PR (with bugs)
 └── types/
 ```
+
+## Deployed URL
+
+https://code-challenge-pr-review.vercel.app
