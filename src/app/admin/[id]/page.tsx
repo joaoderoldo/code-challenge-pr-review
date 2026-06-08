@@ -1,9 +1,18 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock, MessageSquare } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Circle,
+  Clock,
+  Lightbulb,
+  MessageSquare,
+  Sparkles,
+} from "lucide-react";
 import { isAdmin } from "@/lib/auth";
 import { getSession } from "@/lib/sessions";
 import { pullRequest } from "@/lib/pr-data";
+import { BUGS, findBugForLine, severityColor } from "@/lib/bugs";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -25,6 +34,12 @@ export default async function AdminSessionPage({ params }: Props) {
     },
     new Map()
   );
+
+  const matchedBugIds = new Set<string>();
+  for (const c of session.comments) {
+    const bug = findBugForLine(c.filePath, c.lineNumber);
+    if (bug) matchedBugIds.add(bug.id);
+  }
 
   const getLineContent = (filePath: string, lineNumber: number): string | undefined => {
     const file = pullRequest.files.find((f) => f.path === filePath);
@@ -67,11 +82,73 @@ export default async function AdminSessionPage({ params }: Props) {
           {submitted && <> · Submitted {new Date(session.submittedAt!).toLocaleString()}</>}
         </div>
 
+        <section className="mt-6 rounded-md border border-(--color-border-default) bg-(--color-canvas-subtle) p-4">
+          <header className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-(--color-fg-muted)">
+              <Sparkles size={14} />
+              Bug detection
+            </h2>
+            <span className="text-sm text-(--color-fg-muted)">
+              <span className="font-semibold text-(--color-fg-default)">
+                {matchedBugIds.size}
+              </span>{" "}
+              of {BUGS.length} bug lines flagged
+            </span>
+          </header>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {BUGS.map((bug) => {
+              const found = matchedBugIds.has(bug.id);
+              return (
+                <li
+                  key={bug.id}
+                  className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                    found
+                      ? "border-(--color-success-emphasis)/60 bg-(--color-success-emphasis)/10"
+                      : "border-(--color-border-default) bg-(--color-canvas)"
+                  }`}
+                >
+                  {found ? (
+                    <CheckCircle2
+                      size={16}
+                      className="mt-0.5 shrink-0 text-(--color-success)"
+                    />
+                  ) : (
+                    <Circle size={16} className="mt-0.5 shrink-0 text-(--color-fg-subtle)" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={
+                          found
+                            ? "font-medium text-(--color-fg-default)"
+                            : "text-(--color-fg-muted)"
+                        }
+                      >
+                        {bug.label}
+                      </span>
+                      <span
+                        className={`rounded border px-1.5 py-0.5 text-xs ${severityColor(bug.severity)}`}
+                      >
+                        {bug.severity}
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-(--color-fg-subtle) mono">
+                      {bug.filePath}:{bug.primaryLine}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-3 text-xs text-(--color-fg-subtle)">
+            Line matching is automatic — the comment&apos;s wording still needs your
+            review to confirm the candidate explained the root cause correctly.
+          </p>
+        </section>
+
         {session.summary && (
           <div className="mt-6 rounded-md border border-(--color-border-default) bg-(--color-canvas-subtle) p-4">
-            <h2 className="mb-2 text-sm font-semibold text-(--color-fg-muted)">
-              Final summary
-            </h2>
+            <h2 className="mb-2 text-sm font-semibold text-(--color-fg-muted)">Final summary</h2>
             <p className="whitespace-pre-wrap text-sm text-(--color-fg-default)">
               {session.summary}
             </p>
@@ -103,20 +180,59 @@ export default async function AdminSessionPage({ params }: Props) {
                     .sort((a, b) => a.lineNumber - b.lineNumber)
                     .map((c) => {
                       const lineContent = getLineContent(filePath, c.lineNumber);
+                      const bug = findBugForLine(filePath, c.lineNumber);
                       return (
-                        <div key={c.id} className="px-4 py-3">
-                          <div className="mb-2 text-xs text-(--color-fg-muted)">
-                            Line {c.lineNumber} ·{" "}
-                            {new Date(c.createdAt).toLocaleString()}
+                        <div
+                          key={c.id}
+                          className={
+                            bug
+                              ? "border-l-2 border-(--color-success) bg-(--color-success-emphasis)/5 px-4 py-3"
+                              : "px-4 py-3"
+                          }
+                        >
+                          <div className="mb-2 flex items-center gap-2 text-xs text-(--color-fg-muted)">
+                            <span>Line {c.lineNumber}</span>
+                            <span>·</span>
+                            <span>{new Date(c.createdAt).toLocaleString()}</span>
+                            {bug && (
+                              <span
+                                className={`ml-auto inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${severityColor(bug.severity)}`}
+                              >
+                                <CheckCircle2 size={12} />
+                                {bug.label}
+                              </span>
+                            )}
                           </div>
                           {lineContent && (
-                            <pre className="mb-2 overflow-x-auto rounded border-l-2 border-(--color-accent) bg-(--color-canvas) px-3 py-1.5 diff-line text-(--color-fg-muted)">
+                            <pre
+                              className={`mb-2 overflow-x-auto rounded border-l-2 px-3 py-1.5 diff-line text-(--color-fg-muted) ${
+                                bug
+                                  ? "border-(--color-success) bg-(--color-canvas)"
+                                  : "border-(--color-accent) bg-(--color-canvas)"
+                              }`}
+                            >
                               {lineContent}
                             </pre>
                           )}
-                          <p className="whitespace-pre-wrap text-sm text-(--color-fg-default)">
-                            {c.body}
-                          </p>
+                          <div>
+                            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-(--color-fg-subtle)">
+                              Candidate answer
+                            </div>
+                            <p className="whitespace-pre-wrap text-sm text-(--color-fg-default)">
+                              {c.body}
+                            </p>
+                          </div>
+                          {bug && (
+                            <div className="mt-3 rounded-md border border-(--color-success-emphasis)/40 bg-(--color-success-emphasis)/10 p-3">
+                              <div className="mb-1 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-(--color-success)">
+                                <Lightbulb size={12} />
+                                Expected answer
+                              </div>
+                              <p className="whitespace-pre-wrap text-sm text-(--color-fg-default)">
+                                {bug.expectedAnswer}
+                              </p>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
